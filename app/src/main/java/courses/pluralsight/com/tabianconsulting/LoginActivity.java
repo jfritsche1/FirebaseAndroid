@@ -1,6 +1,7 @@
 package courses.pluralsight.com.tabianconsulting;
 
 
+import android.app.Dialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -14,6 +15,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
@@ -25,6 +28,7 @@ import com.google.firebase.auth.FirebaseUser;
 public class LoginActivity extends AppCompatActivity {
 
     private static final String TAG = "LoginActivity";
+    private static final int ERROR_DIALOG_REQUEST = 9001;
 
     // Used to retrieve the authentication state listener.
     private FirebaseAuth.AuthStateListener mAuthListener;
@@ -42,7 +46,14 @@ public class LoginActivity extends AppCompatActivity {
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
 
         setupFirebaseAuth();
+        if(servicesOK()){
+            init();
+        }
+        hideSoftKeyboard();
 
+    }
+
+    private void init(){
         Button signIn = (Button) findViewById(R.id.email_sign_in_button);
         signIn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -67,6 +78,7 @@ public class LoginActivity extends AppCompatActivity {
                             }).addOnFailureListener(new OnFailureListener() {
                         @Override
                         public void onFailure(@NonNull Exception e) {
+                            Toast.makeText(LoginActivity.this, "Authentication Failed", Toast.LENGTH_SHORT).show();
                             hideDialog();
                         }
                     });
@@ -89,7 +101,8 @@ public class LoginActivity extends AppCompatActivity {
         resetPassword.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                PasswordResetDialog dialog = new PasswordResetDialog();
+                dialog.show(getSupportFragmentManager(), "dialog_password_reset");
             }
         });
 
@@ -101,11 +114,31 @@ public class LoginActivity extends AppCompatActivity {
                 dialog.show(getSupportFragmentManager(), "dialog_resend_email_verification");
             }
         });
-
-        hideSoftKeyboard();
-
     }
 
+
+    public boolean servicesOK(){
+        Log.d(TAG, "servicesOK: Checking Google Services.");
+
+        int isAvailable = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(LoginActivity.this);
+
+        if(isAvailable == ConnectionResult.SUCCESS){
+            //everything is ok and the user can make mapping requests
+            Log.d(TAG, "servicesOK: Play Services is OK");
+            return true;
+        }
+        else if(GoogleApiAvailability.getInstance().isUserResolvableError(isAvailable)){
+            //an error occured, but it's resolvable
+            Log.d(TAG, "servicesOK: an error occured, but it's resolvable.");
+            Dialog dialog = GoogleApiAvailability.getInstance().getErrorDialog(LoginActivity.this, isAvailable, ERROR_DIALOG_REQUEST);
+            dialog.show();
+        }
+        else{
+            Toast.makeText(this, "Can't connect to mapping services", Toast.LENGTH_SHORT).show();
+        }
+
+        return false;
+    }
     /**
      * Return true if the @param is null
      * @param string

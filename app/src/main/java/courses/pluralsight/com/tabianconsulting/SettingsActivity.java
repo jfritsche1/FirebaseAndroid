@@ -25,6 +25,8 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -46,6 +48,7 @@ import com.google.firebase.storage.StorageMetadata;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 import com.nostra13.universalimageloader.core.ImageLoader;
+import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
 
 
 import java.io.ByteArrayOutputStream;
@@ -69,7 +72,7 @@ public class SettingsActivity extends AppCompatActivity implements
             mSelectedImageUri = imagePath;
             Log.d(TAG, "getImagePath: got the image uri: " + mSelectedImageUri);
 
-            ImageLoader.getInstance().displayImage(imagePath.toString(), mProfileImage);
+            ImageLoader.getInstance().displayImage(mSelectedImageUri.toString(), mProfileImage);
         }
 
     }
@@ -81,7 +84,7 @@ public class SettingsActivity extends AppCompatActivity implements
             mSelectedImageBitmap = bitmap;
             Log.d(TAG, "getImageBitmap: got the image bitmap: " + mSelectedImageBitmap);
 
-            mProfileImage.setImageBitmap(bitmap);
+            mProfileImage.setImageBitmap(mSelectedImageBitmap);
         }
     }
 
@@ -328,10 +331,11 @@ public class SettingsActivity extends AppCompatActivity implements
         return stream.toByteArray();
     }
 
+
     private void executeUploadTask(){
         showDialog();
         FilePaths filePaths = new FilePaths();
-//specify where the photo will be stored
+        //specify where the photo will be stored
         final StorageReference storageReference = FirebaseStorage.getInstance().getReference()
                 .child(filePaths.FIREBASE_IMAGE_STORAGE + "/" + FirebaseAuth.getInstance().getCurrentUser().getUid()
                         + "/profile_image"); //just replace the old image with the new one
@@ -354,20 +358,38 @@ public class SettingsActivity extends AppCompatActivity implements
             UploadTask uploadTask = null;
             uploadTask = storageReference.putBytes(mBytes, metadata);
             //uploadTask = storageReference.putBytes(mBytes); //without metadata
+//            final Task<Uri> urlTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
+//                @Override
+//                public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
+//                    if (!task.isSuccessful()) {
+//                        throw task.getException();
+//                    }
+//                    // Continue with the task to get the download URL
+//                    return storageReference.getDownloadUrl();
+//                }
+//            }).addOnCompleteListener(new OnCompleteListener<Uri>() {
+//                @Override
+//                public void onComplete(@NonNull Task<Uri> task) {
+//                    if (task.isSuccessful()) {
+//                        Uri downloadURL = task.getResult();
+//                        firebaseURL = downloadURL.toString();
+//                    }
+//                }
+//            });
 
 
             uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                 @Override
                 public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
                     //Now insert the download url into the firebase database
-                    Uri firebaseURL = taskSnapshot.getDownloadUrl();
+                    String firebaseURL = taskSnapshot.getStorage().getDownloadUrl().toString();
                     Toast.makeText(SettingsActivity.this, "Upload Success", Toast.LENGTH_SHORT).show();
-                    Log.d(TAG, "onSuccess: firebase download url : " + firebaseURL.toString());
+                    Log.d(TAG, "onSuccess: firebase download url : " + firebaseURL);
                     FirebaseDatabase.getInstance().getReference()
                             .child(getString(R.string.dbnode_users))
                             .child(FirebaseAuth.getInstance().getCurrentUser().getUid())
                             .child(getString(R.string.field_profile_image))
-                            .setValue(firebaseURL.toString());
+                            .setValue(firebaseURL);
 
                     hideDialog();
                 }
@@ -413,6 +435,7 @@ public class SettingsActivity extends AppCompatActivity implements
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
 
+                ImageLoader imageLoader = ImageLoader.getInstance();
                 //this loop will return a single result
                 for(DataSnapshot singleSnapshot: dataSnapshot.getChildren()){
                     Log.d(TAG, "onDataChange: (QUERY METHOD 1) found user: "
@@ -420,7 +443,7 @@ public class SettingsActivity extends AppCompatActivity implements
                     User user = singleSnapshot.getValue(User.class);
                     mName.setText(user.getName());
                     mPhone.setText(user.getPhone());
-                    ImageLoader.getInstance().displayImage(user.getProfile_image(), mProfileImage);
+                    imageLoader.getInstance().displayImage(user.getProfile_image(), mProfileImage);
                 }
             }
 
@@ -433,7 +456,7 @@ public class SettingsActivity extends AppCompatActivity implements
 
         /*
             ---------- QUERY Method 2 ----------
-         */
+
         Query query2 = reference.child(getString(R.string.dbnode_users))
                 .orderByChild(getString(R.string.field_user_id))
                 .equalTo(FirebaseAuth.getInstance().getCurrentUser().getUid());
@@ -453,6 +476,8 @@ public class SettingsActivity extends AppCompatActivity implements
 
             }
         });
+
+        */
 
         mEmail.setText(FirebaseAuth.getInstance().getCurrentUser().getEmail());
     }

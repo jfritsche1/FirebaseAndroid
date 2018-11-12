@@ -16,17 +16,17 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
+import com.nostra13.universalimageloader.core.ImageLoader;
+
+import courses.pluralsight.com.tabianconsulting.utility.UniversalImageLoader;
 
 public class SignedInActivity extends AppCompatActivity {
 
     private static final String TAG = "SignedInActivity";
-
     //Firebase
     private FirebaseAuth.AuthStateListener mAuthListener;
 
     // widgets and UI References
-
-
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -36,31 +36,16 @@ public class SignedInActivity extends AppCompatActivity {
 
         setupFirebaseAuth();
         getUserDetails();
-        //setUserDetails();
+        initImageLoader();
     }
 
-    private void setUserDetails() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-
-        if (user != null) {
-            UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
-                    .setDisplayName("John Fritsche")
-                    .setPhotoUri(Uri.parse("https://media.licdn.com/dms/image/C5603AQEaqnATpwhOVA/profile-displayphoto-shrink_200_200/0?e=1545868800&v=beta&t=cJ8yErg3A0zrvY7qdzVwedvVntS2S25THttRfhQBGIE"))
-                    .build();
-
-            user.updateProfile(profileUpdates)
-                    .addOnCompleteListener(new OnCompleteListener<Void>() {
-                        @Override
-                        public void onComplete(@NonNull Task<Void> task) {
-                            if (task.isSuccessful()) {
-                                Log.d(TAG, "onComplete: User profile updated.");
-                                getUserDetails();
-                            }
-                        }
-                    });
-        }
+    /**
+     * init universal image loader
+     */
+    private void initImageLoader(){
+        UniversalImageLoader imageLoader = new UniversalImageLoader(SignedInActivity.this);
+        ImageLoader.getInstance().init(imageLoader.getConfig());
     }
-
 
     private void getUserDetails(){
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
@@ -80,7 +65,6 @@ public class SignedInActivity extends AppCompatActivity {
 
         }
     }
-
 
     @Override
     protected void onResume() {
@@ -105,8 +89,6 @@ public class SignedInActivity extends AppCompatActivity {
         }
     }
 
-
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.options_menu, menu);
@@ -116,12 +98,17 @@ public class SignedInActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        Intent intent;
         switch (item.getItemId()){
             case R.id.optionSignOut:
                 signOut();
                 return true;
             case R.id.optionAccountSettings:
-                Intent intent = new Intent(SignedInActivity.this, SettingsActivity.class);
+                intent = new Intent(SignedInActivity.this, SettingsActivity.class);
+                startActivity(intent);
+                return true;
+            case R.id.optionChat:
+                intent = new Intent(SignedInActivity.this, ChatActivity.class);
                 startActivity(intent);
                 return true;
             default:
